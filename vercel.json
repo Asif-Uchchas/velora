@@ -1,0 +1,8 @@
+{
+  "buildCommand": "prisma generate && next build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "env": {
+    "PRISMA_CLI_QUERY_ENGINE_TYPE": "library"
+  }
+}
