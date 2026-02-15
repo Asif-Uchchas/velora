@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     description: "Discover premium products at Velora. Beautiful, modern e-commerce experience.",
 };
 
+// Force dynamic rendering to avoid database issues during build
+export const dynamic = 'force-dynamic';
+
 const features = [
     {
         icon: Sparkles,
@@ -36,10 +39,20 @@ const features = [
 ];
 
 export default async function HomePage() {
-    const [{ products: featuredProducts }, categories] = await Promise.all([
-        getProducts({ featured: true, limit: 4 }),
-        getCategories(),
-    ]);
+    let featuredProducts: any[] = [];
+    let categories: any[] = [];
+
+    try {
+        const [productsResult, categoriesResult] = await Promise.all([
+            getProducts({ featured: true, limit: 4 }),
+            getCategories(),
+        ]);
+        featuredProducts = productsResult.products || [];
+        categories = categoriesResult || [];
+    } catch (error) {
+        console.error('Failed to fetch homepage data:', error);
+        // Continue with empty arrays to show fallback UI
+    }
 
     return (
         <div className="animate-fade-in">

@@ -5,13 +5,36 @@ import { getCategories } from "@/actions/category";
 import { Button } from "@/components/ui/button";
 import type { Metadata } from "next";
 
+interface CategoryWithCount {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    image: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    _count: {
+        products: number;
+    };
+}
+
 export const metadata: Metadata = {
     title: "Categories",
     description: "Browse all product categories.",
 };
 
+// Force dynamic rendering to avoid database issues during build
+export const dynamic = 'force-dynamic';
+
 export default async function CategoriesPage() {
-    const categories = await getCategories();
+    let categories: CategoryWithCount[] = [];
+
+    try {
+        categories = await getCategories() as CategoryWithCount[];
+    } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        // Return empty array to show fallback UI
+    }
 
     return (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
