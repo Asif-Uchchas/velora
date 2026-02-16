@@ -4,13 +4,14 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Eye, Sparkles } from "lucide-react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
+import { useWishlist } from "@/hooks/use-wishlist";
 import { formatPrice } from "@/lib/formatters";
 import { toast } from "sonner";
-import { Confetti } from "@/components/shared/effects";
+import { Confetti, HeartAnimation } from "@/components/shared/effects";
 
 interface ProductCardProps {
     id: string;
@@ -39,8 +40,9 @@ export function ProductCard({
 }: ProductCardProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+    const { isInWishlist, toggleItem, isLoading } = useWishlist();
     const addItem = useCartStore((s) => s.addItem);
     
     const discount = comparePrice
@@ -49,6 +51,7 @@ export function ProductCard({
 
     const displayImages = images.length > 0 ? images : ["/placeholder.svg"];
     const hasMultipleImages = displayImages.length > 1;
+    const inWishlist = isInWishlist(id);
 
     // 3D tilt effect
     const cardRef = useRef<HTMLDivElement>(null);
@@ -95,18 +98,34 @@ export function ProductCard({
         });
     };
 
-    const handleLike = (e: React.MouseEvent) => {
+    const handleLike = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsLiked(!isLiked);
-        if (!isLiked) {
-            toast.success("Added to wishlist!");
+        
+        if (isLoading) return;
+        
+        const result = await toggleItem(id);
+        if (result.success && result.added) {
+            setShowHeartAnimation(true);
+            setTimeout(() => setShowHeartAnimation(false), 1000);
         }
     };
 
     return (
         <>
             <Confetti trigger={showConfetti} particleCount={20} />
+            <AnimatePresence>
+                {showHeartAnimation && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.5 }}
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
+                    >
+                        <Heart className="w-24 h-24 text-red-500 fill-red-500" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -208,17 +227,17 @@ export function ProductCard({
                                 <motion.button
                                     onClick={handleLike}
                                     className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
-                                        isLiked 
+                                        inWishlist 
                                             ? "bg-red-500 text-white" 
                                             : "bg-white/90 text-gray-600 hover:bg-white hover:text-red-500"
                                     }`}
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
-                                    animate={isLiked ? {
+                                    animate={inWishlist ? {
                                         scale: [1, 1.2, 1],
                                     } : {}}
                                 >
-                                    <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
+                                    <Heart className={`w-4 h-4 ${inWishlist ? "fill-current" : ""}`} />
                                 </motion.button>
                                 
                                 <motion.div
