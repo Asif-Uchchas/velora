@@ -618,3 +618,239 @@
 .animate-morph {
   animation: morph 8s ease-in-out infinite;
 }
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* Optimize animations for performance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* GPU acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Optimize scrolling performance */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Image optimization */
+img {
+  content-visibility: auto;
+}
+
+/* Contain paint for complex components */
+.contain-paint {
+  contain: paint;
+}
+
+/* Contain layout for better performance */
+.contain-layout {
+  contain: layout;
+}
+
+/* Contain strict for maximum performance */
+.contain-strict {
+  contain: strict;
+}
+
+/* Lazy loading styles */
+.lazy-image {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.lazy-image.loaded {
+  opacity: 1;
+}
+
+/* Smooth image loading */
+.image-loading {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--secondary) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Touch action optimization */
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+/* Optimize text rendering */
+.optimize-text {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Content visibility for off-screen content */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+
+/* ============================================
+   ZOOM EFFECT STYLES
+   ============================================ */
+
+.zoom-container {
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.zoom-lens {
+  position: absolute;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.3);
+}
+
+.zoom-result {
+  position: absolute;
+  border: 1px solid var(--border);
+  background-repeat: no-repeat;
+  background-color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   PARALLAX OPTIMIZATION
+   ============================================ */
+
+.parallax-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.parallax-layer {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ============================================
+   SLIDER STYLES
+   ============================================ */
+
+.slider-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.slider-track {
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.slider-slide {
+  flex: 0 0 100%;
+  width: 100%;
+}
+
+/* ============================================
+   PRODUCT DETAIL ENHANCEMENTS
+   ============================================ */
+
+.product-detail-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .product-detail-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+  }
+}
+
+/* Staggered animation delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
+/* Feature card hover effects */
+.feature-card {
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(99, 102, 241, 0.2);
+}
+
+/* Icon animation on hover */
+.icon-hover {
+  transition: transform 0.3s ease;
+}
+
+.group:hover .icon-hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--secondary) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+@media (max-width: 640px) {
+  .mobile-animate-fast {
+    animation-duration: 0.3s !important;
+  }
+  
+  .mobile-parallax-off {
+    transform: none !important;
+  }
+}
+
+/* ============================================
+   DARK MODE ENHANCEMENTS
+   ============================================ */
+
+.dark .glow-primary {
+  box-shadow: 0 0 20px rgba(129, 140, 248, 0.3);
+}
+
+.dark .glow-accent {
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+}
