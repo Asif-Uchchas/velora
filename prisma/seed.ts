@@ -110,13 +110,13 @@ async function main() {
             name: "Electronics",
             slug: "electronics",
             description: "Latest gadgets, devices, and technology",
-            image: "https://images.unsplash.com/photo-1498049860654-af1a5c5668ba?auto=format&fit=crop&w=800&q=80",
+            image: "https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=800&q=80",
         },
         {
             name: "Clothing",
             slug: "clothing",
             description: "Fashion for men, women, and kids",
-            image: "https://images.unsplash.com/photo-1445205170230-05328324f37f?auto=format&fit=crop&w=800&q=80",
+            image: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80",
         },
         {
             name: "Home & Living",
@@ -148,7 +148,7 @@ async function main() {
         categoriesData.map((cat) =>
             prisma.category.upsert({
                 where: { slug: cat.slug },
-                update: {},
+                update: cat,
                 create: cat,
             })
         )
@@ -372,7 +372,7 @@ async function main() {
 
     const electronics = categories[0];
     const clothing = categories[1];
-    
+
     // Get some products for orders
     const headphones = await prisma.product.findUnique({ where: { slug: "premium-wireless-headphones" } });
     const watch = await prisma.product.findUnique({ where: { slug: "smart-watch-pro" } });
