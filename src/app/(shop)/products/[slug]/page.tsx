@@ -39,16 +39,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// WhatsApp Business phone number - replace with actual number
-const WHATSAPP_NUMBER = "+8801999398675";
-
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
 
   if (!product) notFound();
 
-  const reviews = await getProductReviews(product.id);
+  // The WhatsApp number comes from Admin → Store settings (defaults to +8801999398675)
+  const [reviews, settings] = await Promise.all([
+    getProductReviews(product.id),
+    getStoreSettings(),
+  ]);
 
   const avgRating =
     reviews.length > 0
