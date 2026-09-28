@@ -39,17 +39,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+// WhatsApp Business phone number - replace with actual number
+const WHATSAPP_NUMBER = "+8801999398675";
+
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
 
   if (!product) notFound();
 
-  const [reviews, settings] = await Promise.all([
-    getProductReviews(product.id),
-    getStoreSettings(),
-  ]);
-  
+  const reviews = await getProductReviews(product.id);
+
   const avgRating =
     reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
@@ -57,8 +57,8 @@ export default async function ProductDetailPage({ params }: Props) {
 
   const discount = product.comparePrice
     ? Math.round(
-        ((product.comparePrice - product.price) / product.comparePrice) * 100
-      )
+      ((product.comparePrice - product.price) / product.comparePrice) * 100
+    )
     : 0;
 
   // Related products
