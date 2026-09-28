@@ -5,6 +5,21 @@ import { auth } from "@/lib/auth";
 import { reviewSchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
 
+async function refreshProductRating(productId: string) {
+  const agg = await prisma.review.aggregate({
+    where: { productId },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const product = await prisma.product.update({
+    where: { id: productId },
+    data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count },
+    select: { slug: true },
+  });
+  revalidatePath(`/products/${product.slug}`);
+  revalidatePath("/");
+}
+
 export async function createReview(data: {
   productId: string;
   rating: number;
@@ -22,7 +37,7 @@ export async function createReview(data: {
   }
 
   // Check if user has purchased the product
-  const hasPurchased = await hasUserPurchasedProduct(data.productId);
+  const hasPurchased = await hasUserPurchasedProduct(parsed.data.productId);
   if (!hasPurchased) {
     return { error: "You can only review products you have purchased" };
   }
@@ -32,7 +47,7 @@ export async function createReview(data: {
     where: {
       userId_productId: {
         userId: session.user.id,
-        productId: data.productId,
+        productId: parsed.data.productId,
       },
     },
   });
@@ -42,8 +57,8 @@ export async function createReview(data: {
     const review = await prisma.review.update({
       where: { id: existingReview.id },
       data: {
-        rating: data.rating,
-        comment: data.comment || null,
+        rating: parsed.data.rating,
+        comment: parsed.data.comment || null,
       },
       include: {
         user: {
@@ -52,7 +67,7 @@ export async function createReview(data: {
       },
     });
 
-    revalidatePath(`/products/${data.productId}`);
+    await refreshProductRating(parsed.data.productId);
     return {
       success: true,
       review: {
@@ -66,9 +81,9 @@ export async function createReview(data: {
   const review = await prisma.review.create({
     data: {
       userId: session.user.id,
-      productId: data.productId,
-      rating: data.rating,
-      comment: data.comment || null,
+      productId: parsed.data.productId,
+      rating: parsed.data.rating,
+      comment: parsed.data.comment || null,
     },
     include: {
       user: {
@@ -77,7 +92,7 @@ export async function createReview(data: {
     },
   });
 
-  revalidatePath(`/products/${data.productId}`);
+  await refreshProductRating(parsed.data.productId);
   return {
     success: true,
     review: {
@@ -171,6 +186,6 @@ export async function deleteReview(reviewId: string) {
     where: { id: reviewId },
   });
 
-  revalidatePath(`/products/${review.productId}`);
+  await refreshProductRating(review.productId);
   return { success: true };
 }

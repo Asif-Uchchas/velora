@@ -10,6 +10,7 @@ import {
     Users,
     BarChart3,
     ArrowLeft,
+    Settings,
     Menu,
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
@@ -25,6 +26,7 @@ const adminLinks = [
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/admin/settings", label: "Store settings", icon: Settings },
 ];
 
 function SidebarContent({ pathname }: { pathname: string }) {
@@ -37,7 +39,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
 
             <nav className="flex-1 p-3 space-y-1">
                 {adminLinks.map((link) => {
-                    const isActive = pathname === link.href;
+                    const isActive = link.href === "/admin" ? pathname === "/admin" : pathname.startsWith(link.href);
                     return (
                         <Link
                             key={link.href}
@@ -67,7 +69,7 @@ function SidebarContent({ pathname }: { pathname: string }) {
     );
 }
 
-export default function AdminLayout({
+export function AdminShell({
     children,
 }: {
     children: React.ReactNode;

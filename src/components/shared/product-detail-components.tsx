@@ -202,8 +202,8 @@ export function FeatureBadge({ icon: Icon, label, description, color = "primary"
 // Trust Badges Grid
 export function TrustBadgesGrid() {
   const badges = [
-    { icon: Truck, label: "Free Shipping", description: "On orders over $100", color: "green" },
-    { icon: Shield, label: "Secure Payment", description: "100% secure checkout", color: "blue" },
+    { icon: Truck, label: "Nationwide Delivery", description: "All 64 districts", color: "green" },
+    { icon: Shield, label: "Cash on Delivery", description: "Pay when it arrives", color: "blue" },
     { icon: RotateCcw, label: "Easy Returns", description: "30-day return policy", color: "purple" },
     { icon: Package, label: "Fast Delivery", description: "2-5 business days", color: "orange" },
   ];

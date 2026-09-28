@@ -62,7 +62,7 @@ export function Footer() {
                     </p>
                     <div className="flex gap-4">
                         <span className="text-xs text-muted-foreground">
-                            Built with Next.js & Stripe
+                            Cash on delivery · Order on WhatsApp
                         </span>
                     </div>
                 </div>

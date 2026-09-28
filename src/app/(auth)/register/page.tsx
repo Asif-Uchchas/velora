@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/logo";
 import { registerUser } from "@/actions/user";
 import { toast } from "sonner";
+import { safeRedirectPath } from "@/lib/utils";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -29,7 +30,8 @@ export default function RegisterPage() {
             setLoading(false);
         } else {
             toast.success("Account created! Please sign in.");
-            router.push("/login");
+            const next = safeRedirectPath(new URLSearchParams(window.location.search).get("callbackUrl"));
+            router.push(next ? `/login?callbackUrl=${encodeURIComponent(next)}` : "/login");
         }
     }
 
@@ -98,6 +100,23 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label htmlFor="phone">WhatsApp / mobile number</Label>
+                            <Input
+                                id="phone"
+                                name="phone"
+                                type="tel"
+                                inputMode="tel"
+                                autoComplete="tel"
+                                placeholder="01XXXXXXXXX"
+                                maxLength={20}
+                                className="h-11 rounded-lg"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Optional now, but needed to place orders.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
                             <div className="relative">
                                 <Input
@@ -106,12 +125,15 @@ export default function RegisterPage() {
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
                                     required
-                                    minLength={6}
+                                    minLength={8}
+                                    maxLength={128}
+                                    autoComplete="new-password"
                                     className="h-11 rounded-lg pr-10"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 >
                                     {showPassword ? (
@@ -122,7 +144,7 @@ export default function RegisterPage() {
                                 </button>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Must be at least 6 characters
+                                Must be at least 8 characters
                             </p>
                         </div>
 

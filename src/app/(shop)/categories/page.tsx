@@ -60,7 +60,7 @@ export default async function CategoriesPage() {
                     {categories.map((category) => (
                         <Link
                             key={category.id}
-                            href={`/categories/${category.slug}`}
+                            href={`/?category=${category.slug}`}
                             className="group overflow-hidden rounded-xl border bg-card hover-lift shadow-premium"
                         >
                             <div className="aspect-[4/3] relative overflow-hidden bg-muted">

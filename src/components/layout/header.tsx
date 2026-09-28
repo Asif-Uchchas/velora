@@ -6,7 +6,6 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import {
     ShoppingBag,
-    Search,
     User,
     Heart,
     Menu,
@@ -36,9 +35,9 @@ import {
 import { useCartStore } from "@/stores/cart-store";
 
 const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/products", label: "Products" },
+    { href: "/", label: "Shop" },
     { href: "/categories", label: "Categories" },
+    { href: "/?sale=1&sort=discount", label: "Deals" },
 ];
 
 export function Header() {
@@ -86,28 +85,22 @@ export function Header() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-0.5 sm:gap-1">
-                    <Link href="/products?search=" className="hidden sm:block">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
-                            <Search className="h-4 w-4" />
-                        </Button>
-                    </Link>
-
-                    <Link href="/account/wishlist" className="hidden sm:block">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                    <Button asChild variant="ghost" size="icon" className="hidden sm:inline-flex h-9 w-9 rounded-lg">
+                        <Link href="/account/wishlist" aria-label="Wishlist">
                             <Heart className="h-4 w-4" />
-                        </Button>
-                    </Link>
+                        </Link>
+                    </Button>
 
-                    <Link href="/cart" className="relative">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                    <Button asChild variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg">
+                        <Link href="/cart" aria-label={mounted && itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}>
                             <ShoppingBag className="h-4 w-4" />
                             {mounted && itemCount > 0 && (
                                 <Badge className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full p-0 text-[9px] sm:text-[10px] gradient-bg border-0 text-white">
                                     {itemCount > 99 ? '99+' : itemCount}
                                 </Badge>
                             )}
-                        </Button>
-                    </Link>
+                        </Link>
+                    </Button>
 
                     <ThemeToggle />
 

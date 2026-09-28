@@ -25,7 +25,7 @@ export default function CartPage() {
                         Looks like you haven&apos;t added anything to your cart yet. Start
                         browsing our collection to find something you love.
                     </p>
-                    <Link href="/products">
+                    <Link href="/">
                         <Button className="mt-8 rounded-lg gradient-bg border-0 text-white hover:opacity-90">
                             Continue Shopping
                             <ArrowRight className="ml-2 h-4 w-4" />
@@ -131,26 +131,27 @@ export default function CartPage() {
                                 <span>{formatPrice(getTotal())}</span>
                             </div>
                             <div className="flex justify-between text-xs sm:text-sm">
-                                <span className="text-muted-foreground">Shipping</span>
-                                <span className="text-green-600">Free</span>
+                                <span className="text-muted-foreground">Delivery</span>
+                                <span className="text-muted-foreground">Calculated at checkout</span>
                             </div>
                             <Separator />
                             <div className="flex justify-between font-semibold">
-                                <span className="text-sm sm:text-base">Total</span>
+                                <span className="text-sm sm:text-base">Subtotal</span>
                                 <span className="text-base sm:text-lg">{formatPrice(getTotal())}</span>
                             </div>
                         </div>
-                        <Link href="/checkout">
-                            <Button className="w-full mt-4 sm:mt-6 h-10 sm:h-11 rounded-lg gradient-bg border-0 text-white hover:opacity-90 text-sm sm:text-base">
+                        <Button asChild className="w-full mt-4 sm:mt-6 h-11 rounded-lg gradient-bg border-0 text-white hover:opacity-90 text-sm sm:text-base">
+                            <Link href="/checkout">
                                 Proceed to Checkout
                                 <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <Link href="/products">
-                            <Button variant="outline" className="w-full mt-2 sm:mt-3 rounded-lg h-10 sm:h-11 text-sm sm:text-base">
-                                Continue Shopping
-                            </Button>
-                        </Link>
+                            </Link>
+                        </Button>
+                        <p className="mt-3 text-center text-xs text-muted-foreground">
+                            No payment now: order on WhatsApp or email, pay cash on delivery.
+                        </p>
+                        <Button asChild variant="outline" className="w-full mt-2 sm:mt-3 rounded-lg h-11 text-sm sm:text-base">
+                            <Link href="/">Continue Shopping</Link>
+                        </Button>
                     </div>
                 </div>
             </div>

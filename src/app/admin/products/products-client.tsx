@@ -128,12 +128,12 @@ export function ProductsClient({
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Price ($)</Label>
-                                    <Input name="price" type="number" step="0.01" required className="rounded-lg" />
+                                    <Label>Price (৳)</Label>
+                                    <Input name="price" type="number" step="1" min="1" required className="rounded-lg" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Compare Price ($)</Label>
-                                    <Input name="comparePrice" type="number" step="0.01" className="rounded-lg" />
+                                    <Label>Compare-at price (৳)</Label>
+                                    <Input name="comparePrice" type="number" step="1" min="1" className="rounded-lg" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
