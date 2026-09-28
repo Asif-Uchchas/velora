@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/logo";
 import { toast } from "sonner";
+import { safeRedirectPath } from "@/lib/utils";
+
+function callbackPath() {
+    if (typeof window === "undefined") return "/";
+    return safeRedirectPath(new URLSearchParams(window.location.search).get("callbackUrl")) ?? "/";
+}
 
 export default function LoginPage() {
     const router = useRouter();
@@ -29,10 +35,10 @@ export default function LoginPage() {
         });
 
         if (result?.error) {
-            toast.error("Invalid email or password");
+            toast.error("Invalid email or password. Too many attempts will lock sign-in for 15 minutes.");
             setLoading(false);
         } else {
-            router.push("/");
+            router.push(callbackPath());
             router.refresh();
         }
     }
@@ -70,6 +76,13 @@ export default function LoginPage() {
                             Don&apos;t have an account?{" "}
                             <Link
                                 href="/register"
+                                onClick={(e) => {
+                                    const next = callbackPath();
+                                    if (next !== "/") {
+                                        e.preventDefault();
+                                        router.push(`/register?callbackUrl=${encodeURIComponent(next)}`);
+                                    }
+                                }}
                                 className="text-primary font-medium hover:underline"
                             >
                                 Sign up
@@ -80,7 +93,7 @@ export default function LoginPage() {
                     <Button
                         variant="outline"
                         className="w-full h-11 rounded-lg"
-                        onClick={() => signIn("github", { callbackUrl: "/" })}
+                        onClick={() => signIn("github", { callbackUrl: callbackPath() })}
                     >
                         <Github className="mr-2 h-4 w-4" />
                         Continue with GitHub
@@ -124,6 +137,7 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 >
                                     {showPassword ? (

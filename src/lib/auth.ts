@@ -5,10 +5,11 @@ import GitHub from "next-auth/providers/github";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validators";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     adapter: PrismaAdapter(prisma),
-    session: { strategy: "jwt" },
+    session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
     pages: {
         signIn: "/login",
     },
@@ -23,11 +24,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, request) {
                 const validated = loginSchema.safeParse(credentials);
                 if (!validated.success) return null;
 
                 const { email, password } = validated.data;
+
+                // Brute-force protection: per account and per IP
+                const ip =
+                    request?.headers?.get("x-real-ip") ||
+                    request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                    "unknown";
+                const [emailOk, ipOk] = await Promise.all([
+                    rateLimit(`login:email:${email}`, 10, 15 * 60),
+                    rateLimit(`login:ip:${ip}`, 30, 15 * 60),
+                ]);
+                if (!emailOk || !ipOk) return null;
 
                 const user = await prisma.user.findUnique({
                     where: { email },

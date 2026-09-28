@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/formatters";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Analytics — Admin" };
 
 async function getAnalytics() {
@@ -15,7 +17,7 @@ async function getAnalytics() {
     ] = await Promise.all([
         prisma.order.aggregate({
             _sum: { total: true },
-            where: { status: { not: "CANCELLED" } },
+            where: { status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] } },
         }),
         prisma.order.groupBy({
             by: ["status"],

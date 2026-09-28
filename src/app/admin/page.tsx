@@ -3,14 +3,16 @@ import {
     Package,
     ShoppingCart,
     Users,
-    TrendingUp,
-    ArrowUpRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/formatters";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ORDER_STATUS_COLOR, ORDER_STATUS_LABEL } from "@/lib/order-status";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Admin Dashboard" };
 
@@ -24,9 +26,9 @@ async function getDashboardStats() {
     ] = await Promise.all([
         prisma.order.aggregate({
             _sum: { total: true },
-            where: { status: { not: "CANCELLED" } },
+            where: { status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] } },
         }),
-        prisma.order.count(),
+        prisma.order.count({ where: { status: "PENDING" } }),
         prisma.product.count({ where: { isArchived: false } }),
         prisma.user.count({ where: { role: "CUSTOMER" } }),
         prisma.order.findMany({
@@ -51,41 +53,34 @@ async function getDashboardStats() {
     };
 }
 
-const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-    PROCESSING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    SHIPPED: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    DELIVERED: "bg-green-500/10 text-green-600 dark:text-green-400",
-    CANCELLED: "bg-red-500/10 text-red-600 dark:text-red-400",
-};
-
 export default async function AdminDashboardPage() {
     const stats = await getDashboardStats();
 
     const kpis = [
         {
-            title: "Total Revenue",
+            title: "Confirmed revenue",
             value: formatPrice(stats.revenue),
             icon: DollarSign,
-            change: "+12.5%",
+            hint: "Confirmed, shipped and delivered orders",
         },
         {
-            title: "Total Orders",
+            title: "Awaiting confirmation",
             value: stats.orders.toString(),
             icon: ShoppingCart,
-            change: "+8.2%",
+            hint: "Order requests to confirm",
+            href: "/admin/orders?status=PENDING",
         },
         {
             title: "Products",
             value: stats.products.toString(),
             icon: Package,
-            change: "+3",
+            hint: "Active products",
         },
         {
             title: "Customers",
             value: stats.customers.toString(),
             icon: Users,
-            change: "+24",
+            hint: "Registered customers",
         },
     ];
 
@@ -112,10 +107,13 @@ export default async function AdminDashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{kpi.value}</div>
-                            <div className="mt-1 flex items-center text-xs text-green-600">
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                                {kpi.change} from last month
-                            </div>
+                            {"href" in kpi && kpi.href ? (
+                                <Link href={kpi.href} className="mt-1 inline-block text-xs font-medium text-primary hover:underline">
+                                    {kpi.hint} →
+                                </Link>
+                            ) : (
+                                <p className="mt-1 text-xs text-muted-foreground">{kpi.hint}</p>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
@@ -140,7 +138,7 @@ export default async function AdminDashboardPage() {
                                 >
                                     <div className="flex-1">
                                         <p className="text-sm font-medium">
-                                            {order.user.name || order.user.email}
+                                            {order.customerName || order.user.name || order.user.email}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             {order.items.length} item{order.items.length !== 1 ? "s" : ""} •{" "}
@@ -148,8 +146,8 @@ export default async function AdminDashboardPage() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Badge className={`${statusColors[order.status]} border-0`}>
-                                            {order.status}
+                                        <Badge className={`${ORDER_STATUS_COLOR[order.status]} border-0`}>
+                                            {ORDER_STATUS_LABEL[order.status]}
                                         </Badge>
                                         <span className="text-sm font-semibold">
                                             {formatPrice(order.total)}

@@ -3,7 +3,16 @@ import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Catalog prices below are written in USD and converted to BDT (the store currency).
+const USD_TO_BDT = 110;
+const toBdt = (usd: number) => Math.round(usd * USD_TO_BDT);
+
 async function main() {
+    // The seed creates accounts with well-known demo passwords. Never run it against production by accident.
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "1") {
+        throw new Error("Refusing to seed in production. Set ALLOW_PRODUCTION_SEED=1 if you really mean it.");
+    }
+
     console.log("🌱 Starting database seeding...\n");
 
     // ============================================
@@ -356,10 +365,19 @@ async function main() {
 
     // Create products one by one to handle duplicates
     for (const product of productsData) {
+        const p = product as typeof product & { comparePrice?: number };
+        const price = toBdt(p.price);
+        const comparePrice = p.comparePrice ? toBdt(p.comparePrice) : null;
         await prisma.product.upsert({
-            where: { slug: product.slug },
+            where: { slug: p.slug },
             update: {},
-            create: product as any,
+            create: {
+                ...(p as any),
+                price,
+                comparePrice,
+                discountPercent:
+                    comparePrice && comparePrice > price ? Math.floor(((comparePrice - price) / comparePrice) * 100) : 0,
+            },
         });
     }
     console.log(`  ✓ ${productsData.length} products created`);
@@ -381,43 +399,63 @@ async function main() {
 
     if (headphones && watch && jacket && shoes) {
         // Create sample orders for customers
+        const line = (product: { id: string; name: string; price: unknown }, quantity: number) => ({
+            productId: product.id,
+            name: product.name,
+            quantity,
+            price: Number(product.price),
+        });
         const sampleOrders = [
             {
+                orderNumber: "VL-SEED-0001",
                 userId: customers[0].id,
                 status: OrderStatus.DELIVERED,
-                total: 699.98,
-                items: [
-                    { productId: headphones.id, quantity: 1, price: 299.99 },
-                    { productId: watch.id, quantity: 1, price: 399.99 },
-                ],
+                channel: "WHATSAPP" as const,
+                paymentStatus: "PAID" as const,
+                items: [line(headphones, 1), line(watch, 1)],
+                district: "Dhaka",
+                deliveryZone: "INSIDE_DHAKA" as const,
+                deliveryFee: 60,
             },
             {
+                orderNumber: "VL-SEED-0002",
                 userId: customers[1].id,
                 status: OrderStatus.SHIPPED,
-                total: 219.98,
-                items: [
-                    { productId: jacket.id, quantity: 1, price: 89.99 },
-                    { productId: shoes.id, quantity: 1, price: 129.99 },
-                ],
+                channel: "EMAIL" as const,
+                paymentStatus: "UNPAID" as const,
+                items: [line(jacket, 1), line(shoes, 1)],
+                district: "Chattogram",
+                deliveryZone: "OUTSIDE_DHAKA" as const,
+                deliveryFee: 120,
             },
             {
+                orderNumber: "VL-SEED-0003",
                 userId: customers[2].id,
-                status: OrderStatus.PROCESSING,
-                total: 299.99,
-                items: [
-                    { productId: headphones.id, quantity: 1, price: 299.99 },
-                ],
+                status: OrderStatus.PENDING,
+                channel: "WHATSAPP" as const,
+                paymentStatus: "UNPAID" as const,
+                items: [line(headphones, 1)],
+                district: "Dhaka",
+                deliveryZone: "INSIDE_DHAKA" as const,
+                deliveryFee: 60,
             },
         ];
 
-        for (const orderData of sampleOrders) {
+        for (const [i, orderData] of sampleOrders.entries()) {
             const { items, ...orderInfo } = orderData;
-            const order = await prisma.order.create({
-                data: {
+            const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            await prisma.order.upsert({
+                where: { orderNumber: orderInfo.orderNumber },
+                update: {},
+                create: {
                     ...orderInfo,
-                    items: {
-                        create: items,
-                    },
+                    subtotal,
+                    total: subtotal + orderInfo.deliveryFee,
+                    customerName: customers[i].name ?? "Customer",
+                    customerPhone: `+8801712${String(345670 + i)}`,
+                    customerEmail: customers[i].email,
+                    address: `House ${12 + i}, Road ${5 + i}`,
+                    items: { create: items },
                 },
             });
         }
@@ -455,6 +493,16 @@ async function main() {
     // ============================================
     // SEEDING SUMMARY
     // ============================================
+    // Keep denormalized rating columns in sync with the seeded reviews
+    const ratings = await prisma.review.groupBy({ by: ["productId"], _avg: { rating: true }, _count: true });
+    for (const r of ratings) {
+        await prisma.product.update({
+            where: { id: r.productId },
+            data: { ratingAvg: r._avg.rating ?? 0, ratingCount: r._count },
+        });
+    }
+    await prisma.storeSettings.upsert({ where: { id: "default" }, update: {}, create: { id: "default" } });
+
     console.log("✅ Seeding completed successfully!\n");
     console.log("📊 Summary:");
     console.log(`  • Users: 1 Admin, 1 Store Manager, 1 Moderator, 4 Customers`);

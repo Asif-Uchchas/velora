@@ -1,197 +1,227 @@
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Sparkles, Shield, Truck, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { getProducts } from "@/actions/product";
+import type { Metadata } from "next";
+import { getPriceBounds, getProducts } from "@/actions/product";
 import { getCategories } from "@/actions/category";
 import { ProductCard } from "@/components/shared/product-card";
-import { ParallaxHero } from "@/components/shared/parallax-hero";
-import { FeaturedProductSlider } from "@/components/shared/featured-product-slider";
-import type { Metadata } from "next";
+import { FeaturedStrip } from "@/components/shop/featured-strip";
+import { ShopFiltersSheet, ShopFiltersSidebar } from "@/components/shop/shop-filters";
+import { ActiveFilters, SortSelect } from "@/components/shop/shop-toolbar";
+import { ShopSearch } from "@/components/shop/shop-search";
+import { hasActiveFilters, parseShopParams } from "@/lib/shop-params";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Velora — Premium E-Commerce",
-  description: "Discover premium products at Velora. Beautiful, modern e-commerce experience.",
+    title: "Velora — Shop Premium Products",
+    description: "Shop premium products with cash on delivery across Bangladesh. Order on WhatsApp in seconds.",
 };
 
-// Force dynamic rendering to avoid database issues during build
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const features = [
-  {
-    icon: Sparkles,
-    title: "Premium Quality",
-    description: "Curated products from top brands",
-  },
-  {
-    icon: Truck,
-    title: "Free Shipping",
-    description: "On orders over $100",
-  },
-  {
-    icon: Shield,
-    title: "Secure Payments",
-    description: "Protected by Stripe",
-  },
-  {
-    icon: CreditCard,
-    title: "Easy Returns",
-    description: "30-day return policy",
-  },
-];
+interface Props {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export default async function HomePage() {
-  let featuredProducts: any[] = [];
-  let categories: any[] = [];
+const PAGE_SIZE = 24;
 
-  try {
-    const [productsResult, categoriesResult] = await Promise.all([
-      getProducts({ featured: true, limit: 4 }),
-      getCategories(),
+export default async function ShopPage({ searchParams }: Props) {
+    const filters = parseShopParams(await searchParams);
+    const categories = await getCategories();
+
+    const categoryIds = categories.filter((c) => filters.categories.includes(c.slug)).map((c) => c.id);
+    const filtered = hasActiveFilters(filters);
+
+    const [{ products, total, pages }, priceBounds, featured] = await Promise.all([
+        getProducts({
+            search: filters.q,
+            // Unknown slugs match nothing rather than silently showing everything
+            categoryIds: filters.categories.length ? (categoryIds.length ? categoryIds : ["__none__"]) : undefined,
+            minPrice: filters.min,
+            maxPrice: filters.max,
+            inStock: filters.inStock,
+            onSale: filters.onSale,
+            featured: filters.featured,
+            minRating: filters.rating,
+            sort: filters.sort,
+            page: filters.page,
+            limit: PAGE_SIZE,
+        }),
+        getPriceBounds(),
+        !filtered && filters.page === 1 ? getProducts({ featured: true, limit: 3 }) : null,
     ]);
-    featuredProducts = productsResult.products || [];
-    categories = categoriesResult || [];
-  } catch (error) {
-    console.error('Failed to fetch homepage data:', error);
-    // Continue with empty arrays to show fallback UI
-  }
 
-  return (
-    <div className="animate-fade-in">
-      {/* Hero with Parallax */}
-      <ParallaxHero
-        title="Discover"
-        highlightText="Premium Products"
-        subtitle="Elevate your lifestyle with our carefully curated collection of premium products. Quality craftsmanship meets modern design."
-        ctaText="Shop Now"
-        ctaHref="/products"
-        secondaryCtaText="Browse Categories"
-        secondaryCtaHref="/categories"
-      />
+    const activeCount =
+        filters.categories.length +
+        (filters.min || filters.max ? 1 : 0) +
+        [filters.inStock, filters.onSale, filters.featured, Boolean(filters.rating)].filter(Boolean).length;
 
-      {/* Features */}
-      <section className="border-y bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {features.map((feature, index) => (
-              <div 
-                key={feature.title} 
-                className="flex items-start gap-2 sm:gap-3 group"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+    const heading = filters.q
+        ? `Results for “${filters.q}”`
+        : filters.categories.length === 1
+            ? categories.find((c) => c.slug === filters.categories[0])?.name ?? "Products"
+            : filters.featured
+                ? "Featured picks"
+                : "All products";
+
+    const filterProps = { categories, filters, priceBounds, total };
+
+    function pageHref(page: number) {
+        const params = new URLSearchParams();
+        if (filters.q) params.set("q", filters.q);
+        if (filters.categories.length) params.set("category", filters.categories.join(","));
+        if (filters.min) params.set("min", String(filters.min));
+        if (filters.max) params.set("max", String(filters.max));
+        if (filters.inStock) params.set("stock", "1");
+        if (filters.onSale) params.set("sale", "1");
+        if (filters.featured) params.set("featured", "1");
+        if (filters.rating) params.set("rating", String(filters.rating));
+        if (filters.sort !== "popular") params.set("sort", filters.sort);
+        if (page > 1) params.set("page", String(page));
+        const qs = params.toString();
+        return qs ? `/?${qs}` : "/";
+    }
+
+    const pageNumbers = Array.from({ length: pages }, (_, i) => i + 1).filter(
+        (p) => p === 1 || p === pages || Math.abs(p - filters.page) <= 2
+    );
+
+    return (
+        <div className="mx-auto max-w-7xl px-4 pb-12 pt-4 sm:pt-6 lg:px-8 animate-fade-in">
+            {featured && featured.products.length > 0 && (
+                <div className="mb-5">
+                    <FeaturedStrip products={featured.products} />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs sm:text-sm font-medium">{feature.title}</h3>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-                    {feature.description}
-                  </p>
+            )}
+
+            {/* Mobile: search + filter trigger + quick category chips */}
+            <div className="mb-4 space-y-3 lg:hidden">
+                <ShopSearch key={filters.q ?? ""} initial={filters.q} />
+                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
+                    <ShopFiltersSheet {...filterProps} activeCount={activeCount} />
+                    <Link
+                        href="/"
+                        scroll={false}
+                        className={cn(
+                            "flex h-10 shrink-0 items-center rounded-full border px-4 text-sm",
+                            filters.categories.length === 0 ? "border-primary bg-primary/10 font-semibold text-primary" : "bg-card"
+                        )}
+                    >
+                        All
+                    </Link>
+                    {categories.map((c) => (
+                        <Link
+                            key={c.id}
+                            href={`/?category=${c.slug}`}
+                            scroll={false}
+                            className={cn(
+                                "flex h-10 shrink-0 items-center rounded-full border px-4 text-sm",
+                                filters.categories.includes(c.slug)
+                                    ? "border-primary bg-primary/10 font-semibold text-primary"
+                                    : "bg-card"
+                            )}
+                        >
+                            {c.name}
+                        </Link>
+                    ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Product Slider */}
-      {featuredProducts.length > 0 && (
-        <FeaturedProductSlider
-          products={featuredProducts.map((p) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            description: p.description,
-            price: p.price,
-            comparePrice: p.comparePrice,
-            images: p.images,
-            category: p.category.name,
-            accentColor: "rgba(99, 102, 241, 0.15)",
-          }))}
-          autoplayInterval={6000}
-        />
-      )}
-
-      {/* Categories */}
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16 lg:px-8">
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Shop by Category</h2>
-              <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                Browse our curated collections
-              </p>
             </div>
-            <Link href="/categories" className="hidden sm:block">
-              <Button variant="ghost" className="text-primary text-sm">
-                View All <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {categories.slice(0, 4).map((category) => (
-              <Link
-                key={category.id}
-                href={`/categories/${category.slug}`}
-                className="group relative overflow-hidden rounded-xl border bg-card hover-lift shadow-premium"
-              >
-                <div className="aspect-[4/3] bg-muted relative overflow-hidden">
-                  {category.image ? (
-                    <Image
-                      src={category.image}
-                      alt={category.name}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 gradient-bg opacity-10" />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-                    <h3 className="text-xs sm:text-sm font-semibold text-white">
-                      {category.name}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-white/70 mt-0.5">
-                      {category._count.products} products
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <Link href="/categories" className="sm:hidden mt-4 block">
-            <Button variant="ghost" className="w-full text-primary text-sm">
-              View All Categories <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
-        </section>
-      )}
 
-      {/* CTA Section */}
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:py-16 lg:px-8">
-        <div className="relative overflow-hidden rounded-xl sm:rounded-2xl gradient-bg p-6 sm:p-12 lg:p-16 text-center">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoLTJ2LTZoMnptMC0xMnY2aC0ydi02aDJ6bTAtMTJ2NmgtMlY0aDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
-          <div className="relative z-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-              Ready to elevate your style?
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-white/80 max-w-xl mx-auto">
-              Join thousands of satisfied customers who trust Velora for their
-              premium shopping needs.
-            </p>
-            <Link href="/products" className="inline-block">
-              <Button
-                size="lg"
-                className="mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl px-6 sm:px-8 bg-white text-primary hover:bg-white/90 text-sm sm:text-base font-semibold"
-              >
-                Start Shopping
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+            <div className="flex gap-8">
+                <aside className="hidden w-72 shrink-0 lg:block">
+                    <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto no-scrollbar">
+                        <ShopFiltersSidebar {...filterProps} />
+                    </div>
+                </aside>
+
+                <section className="min-w-0 flex-1" aria-labelledby="shop-heading">
+                    <div className="mb-4 flex flex-wrap items-end gap-3">
+                        <div className="min-w-0 flex-1">
+                            <h1 id="shop-heading" className="truncate text-xl font-bold tracking-tight sm:text-2xl lg:text-3xl">
+                                {heading}
+                            </h1>
+                            <p className="mt-1 text-xs text-muted-foreground sm:text-sm" aria-live="polite">
+                                {total} product{total === 1 ? "" : "s"}
+                                {filtered ? " match" : ""}
+                            </p>
+                        </div>
+                        <ShopSearch key={filters.q ?? ""} initial={filters.q} className="hidden w-72 lg:block" />
+                        <div className="hidden lg:block">
+                            <SortSelect value={filters.sort} />
+                        </div>
+                    </div>
+
+                    <div className="mb-5">
+                        <ActiveFilters filters={filters} categories={categories} />
+                    </div>
+
+                    {products.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center">
+                            <h2 className="text-lg font-semibold">No products match these filters</h2>
+                            <p className="mt-1 max-w-sm px-4 text-sm text-muted-foreground">
+                                Try removing a filter or widening the price range.
+                            </p>
+                            <Link
+                                href="/"
+                                className="mt-5 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+                            >
+                                Show all products
+                            </Link>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
+                                {products.map((product) => (
+                                    <ProductCard
+                                        key={product.id}
+                                        id={product.id}
+                                        name={product.name}
+                                        slug={product.slug}
+                                        price={product.price}
+                                        comparePrice={product.comparePrice}
+                                        images={product.images}
+                                        stock={product.stock}
+                                        category={product.category.name}
+                                        isFeatured={product.isFeatured}
+                                        ratingAvg={product.ratingAvg}
+                                        ratingCount={product.ratingCount}
+                                    />
+                                ))}
+                            </div>
+
+                            {pages > 1 && (
+                                <nav aria-label="Pagination" className="mt-10 flex flex-wrap items-center justify-center gap-1.5">
+                                    {filters.page > 1 && (
+                                        <Link href={pageHref(filters.page - 1)} className="flex h-10 items-center rounded-lg px-3 text-sm hover:bg-muted">
+                                            ← Prev
+                                        </Link>
+                                    )}
+                                    {pageNumbers.map((page, i) => (
+                                        <span key={page} className="flex items-center gap-1.5">
+                                            {i > 0 && page - pageNumbers[i - 1] > 1 && (
+                                                <span className="px-1 text-muted-foreground">…</span>
+                                            )}
+                                            <Link
+                                                href={pageHref(page)}
+                                                aria-current={page === filters.page ? "page" : undefined}
+                                                className={cn(
+                                                    "flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium",
+                                                    page === filters.page ? "gradient-bg text-white" : "bg-muted hover:bg-muted/70"
+                                                )}
+                                            >
+                                                {page}
+                                            </Link>
+                                        </span>
+                                    ))}
+                                    {filters.page < pages && (
+                                        <Link href={pageHref(filters.page + 1)} className="flex h-10 items-center rounded-lg px-3 text-sm hover:bg-muted">
+                                            Next →
+                                        </Link>
+                                    )}
+                                </nav>
+                            )}
+                        </>
+                    )}
+                </section>
+            </div>
         </div>
-      </section>
-    </div>
-  );
+    );
 }

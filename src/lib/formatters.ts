@@ -1,25 +1,21 @@
+// All prices are stored in Bangladeshi Taka (BDT).
+const plain = new Intl.NumberFormat("en-BD", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+});
+
+/** "৳32,999" — Intl's "BDT" currency style prints "BDT 32,999" in most browsers. */
 export function formatPrice(price: number | string) {
-    // Convert to Taka (assuming price is in dollars, multiply by 110 for approximate conversion)
-    // If you want to store prices directly in Taka in the database, remove the * 110
-    const priceInTaka = Number(price) * 110;
-    
-    return new Intl.NumberFormat("en-BD", {
-        style: "currency",
-        currency: "BDT",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(priceInTaka);
+    return `৳${plain.format(Number(price))}`;
 }
 
 export function formatPriceWithoutSymbol(price: number | string) {
-    const priceInTaka = Number(price) * 110;
-    
-    return new Intl.NumberFormat("en-BD", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(priceInTaka);
+    return plain.format(Number(price));
 }
 
-export function formatPriceFromCents(cents: number) {
-    return formatPrice(cents / 100);
+export const formatTaka = formatPrice;
+
+export function computeDiscountPercent(price: number, comparePrice?: number | null) {
+    if (!comparePrice || comparePrice <= price || comparePrice <= 0) return 0;
+    return Math.floor(((comparePrice - price) / comparePrice) * 100);
 }

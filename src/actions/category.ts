@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/session";
 import { categorySchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
 
@@ -29,10 +29,7 @@ export async function getCategoryBySlug(slug: string) {
 }
 
 export async function createCategory(formData: FormData) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
-        return { error: "Unauthorized" };
-    }
+    if (!(await requireAdmin())) return { error: "Unauthorized" };
 
     const parsed = categorySchema.safeParse({
         name: formData.get("name"),
@@ -55,14 +52,12 @@ export async function createCategory(formData: FormData) {
 
     revalidatePath("/admin/categories");
     revalidatePath("/categories");
+    revalidatePath("/");
     return { success: true };
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
-        return { error: "Unauthorized" };
-    }
+    if (!(await requireAdmin())) return { error: "Unauthorized" };
 
     const parsed = categorySchema.safeParse({
         name: formData.get("name"),
@@ -81,14 +76,12 @@ export async function updateCategory(id: string, formData: FormData) {
 
     revalidatePath("/admin/categories");
     revalidatePath("/categories");
+    revalidatePath("/");
     return { success: true };
 }
 
 export async function deleteCategory(id: string) {
-    const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
-        return { error: "Unauthorized" };
-    }
+    if (!(await requireAdmin())) return { error: "Unauthorized" };
 
     const productCount = await prisma.product.count({
         where: { categoryId: id },
@@ -102,5 +95,6 @@ export async function deleteCategory(id: string) {
 
     revalidatePath("/admin/categories");
     revalidatePath("/categories");
+    revalidatePath("/");
     return { success: true };
 }

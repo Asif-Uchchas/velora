@@ -20,7 +20,7 @@ export default async function WishlistPage() {
                     Save products you love and come back to them later.
                 </p>
                 <Link
-                    href="/products"
+                    href="/"
                     className="mt-4 text-sm text-primary font-medium hover:underline"
                 >
                     Browse Products

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
     const session = await auth();
     const { pathname } = request.nextUrl;
 
@@ -16,10 +16,12 @@ export default async function middleware(request: NextRequest) {
         }
     }
 
-    // Protect account routes
-    if (pathname.startsWith("/account")) {
+    // Protect account + checkout routes, and come back after signing in
+    if (pathname.startsWith("/account") || pathname.startsWith("/checkout")) {
         if (!session) {
-            return NextResponse.redirect(new URL("/login", request.url));
+            const login = new URL("/login", request.url);
+            login.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
+            return NextResponse.redirect(login);
         }
     }
 
@@ -34,5 +36,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/admin/:path*", "/account/:path*", "/login", "/register"],
+    matcher: ["/admin/:path*", "/account/:path*", "/checkout/:path*", "/login", "/register"],
 };

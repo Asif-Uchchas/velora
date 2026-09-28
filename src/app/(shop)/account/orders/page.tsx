@@ -2,22 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getOrders } from "@/actions/order";
+import { getMyOrders } from "@/actions/order";
+import { ORDER_CHANNEL_LABEL, ORDER_STATUS_COLOR, ORDER_STATUS_LABEL } from "@/lib/order-status";
 import { formatPrice } from "@/lib/formatters";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "My Orders" };
 
-const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-    PROCESSING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    SHIPPED: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    DELIVERED: "bg-green-500/10 text-green-600 dark:text-green-400",
-    CANCELLED: "bg-red-500/10 text-red-600 dark:text-red-400",
-};
-
 export default async function OrdersPage() {
-    const orders = await getOrders();
+    const orders = await getMyOrders();
 
     if (orders.length === 0) {
         return (
@@ -30,7 +23,7 @@ export default async function OrdersPage() {
                     Start shopping to see your orders here.
                 </p>
                 <Link
-                    href="/products"
+                    href="/"
                     className="mt-4 text-sm text-primary font-medium hover:underline"
                 >
                     Browse Products
@@ -49,8 +42,8 @@ export default async function OrdersPage() {
                 >
                     <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                         <div>
-                            <p className="text-xs text-muted-foreground">Order ID</p>
-                            <p className="text-sm font-mono">{order.id.slice(0, 12)}...</p>
+                            <p className="text-xs text-muted-foreground">Order · {ORDER_CHANNEL_LABEL[order.channel]}</p>
+                            <p className="text-sm font-mono">{order.orderNumber}</p>
                         </div>
                         <div>
                             <p className="text-xs text-muted-foreground">Date</p>
@@ -62,9 +55,19 @@ export default async function OrdersPage() {
                             <p className="text-xs text-muted-foreground">Total</p>
                             <p className="text-sm font-semibold">{formatPrice(order.total)}</p>
                         </div>
-                        <Badge className={`${statusColors[order.status]} border-0`}>
-                            {order.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                            <Badge className={`${ORDER_STATUS_COLOR[order.status]} border-0`}>
+                                {ORDER_STATUS_LABEL[order.status]}
+                            </Badge>
+                            {order.status === "PENDING" && order.channel === "WHATSAPP" && (
+                                <Link
+                                    href={`/checkout/success?order=${order.orderNumber}`}
+                                    className="text-xs font-medium text-primary hover:underline"
+                                >
+                                    Send on WhatsApp again
+                                </Link>
+                            )}
+                        </div>
                     </div>
                     <div className="flex gap-3 overflow-x-auto no-scrollbar">
                         {order.items.map((item) => (

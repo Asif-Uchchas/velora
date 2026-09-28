@@ -23,6 +23,7 @@ import {
 import { ProductDetailBackground } from "@/components/shared/product-detail-background";
 import { ReviewSection } from "@/components/shared/review-section";
 import { WhatsAppChatButton } from "@/components/shared/whatsapp-chat";
+import { getStoreSettings } from "@/lib/settings";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -84,7 +85,7 @@ export default async function ProductDetailPage({ params }: Props) {
             Home
           </Link>
           <ArrowRight className="w-4 h-4" />
-          <Link href="/products" className="hover:text-foreground transition-colors">
+          <Link href="/" className="hover:text-foreground transition-colors">
             Products
           </Link>
           <ArrowRight className="w-4 h-4" />
@@ -232,7 +233,7 @@ export default async function ProductDetailPage({ params }: Props) {
         productPrice={product.price}
         productImage={product.images[0]}
         productSlug={product.slug}
-        phoneNumber={WHATSAPP_NUMBER}
+        phoneNumber={settings.whatsappNumber}
         businessName="Velora Store"
       />
     </ProductDetailBackground>

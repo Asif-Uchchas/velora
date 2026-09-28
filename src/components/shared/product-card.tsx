@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Eye, Sparkles } from "lucide-react";
+import { Heart, ShoppingBag, Eye, Sparkles, Star } from "lucide-react";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,8 @@ interface ProductCardProps {
     category?: string;
     isFeatured?: boolean;
     isNew?: boolean;
+    ratingAvg?: number;
+    ratingCount?: number;
 }
 
 export function ProductCard({
@@ -37,6 +39,8 @@ export function ProductCard({
     category,
     isFeatured,
     isNew,
+    ratingAvg = 0,
+    ratingCount = 0,
 }: ProductCardProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
@@ -226,6 +230,7 @@ export function ProductCard({
                             <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">
                                 <motion.button
                                     onClick={handleLike}
+                                    aria-label={inWishlist ? "Remove from wishlist" : "Save to wishlist"}
                                     className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
                                         inWishlist 
                                             ? "bg-red-500 text-white" 
@@ -249,6 +254,8 @@ export function ProductCard({
                                         size="icon"
                                         variant="secondary"
                                         className="w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-lg"
+                                        aria-label="View product"
+                                        tabIndex={-1}
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
@@ -301,6 +308,13 @@ export function ProductCard({
                             <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors duration-300 leading-tight mb-2">
                                 {name}
                             </h3>
+                            {ratingCount > 0 && (
+                                <div className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                    <span className="font-medium text-foreground">{ratingAvg.toFixed(1)}</span>
+                                    <span>({ratingCount})</span>
+                                </div>
+                            )}
                             <div className="mt-auto flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-base text-primary">
                                     {formatPrice(price)}
@@ -315,7 +329,7 @@ export function ProductCard({
                             {/* Mobile Add to Cart */}
                             {stock > 0 && (
                                 <motion.div
-                                    className="mt-3 sm:hidden"
+                                    className="mt-3 [@media(hover:hover)]:hidden"
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     <Button
