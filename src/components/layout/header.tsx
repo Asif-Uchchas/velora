@@ -1,140 +1,155 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
 import {
     ShoppingBag,
     User,
     Heart,
     Menu,
-    X,
     LogOut,
     Settings,
     Package,
     LayoutDashboard,
+    Search,
+    ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Sheet,
-    SheetContent,
-    SheetTrigger,
-    SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useCartStore } from "@/stores/cart-store";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { categoryIcon } from "@/components/shop/category-icon";
 
-const navLinks = [
-    { href: "/", label: "Shop" },
-    { href: "/categories", label: "Categories" },
-    { href: "/?sale=1&sort=discount", label: "Deals" },
-];
+export interface HeaderCategory {
+    id: string;
+    name: string;
+    slug: string;
+}
 
-export function Header() {
+function HeaderSearchForm({ className = "" }: { className?: string }) {
+    const router = useRouter();
     const pathname = usePathname();
-    const { data: session } = useSession();
-    const [scrolled, setScrolled] = useState(false);
-    const [open, setOpen] = useState(false);
-    const itemCount = useCartStore((s) => s.getItemCount());
-    const [mounted, setMounted] = useState(false);
+    const searchParams = useSearchParams();
+    const current = pathname === "/" ? searchParams.get("q") ?? "" : "";
+    const [value, setValue] = useState(current);
+    const [prev, setPrev] = useState(current);
 
-    useEffect(() => setMounted(true), []);
+    // Follow the URL when it changes elsewhere (chips, "clear all", back button)
+    if (current !== prev) {
+        setPrev(current);
+        setValue(current);
+    }
 
-    useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 10);
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+    function submit(e: React.FormEvent) {
+        e.preventDefault();
+        const q = value.trim();
+        // On the shop page keep the other filters; elsewhere start a fresh search
+        const params = new URLSearchParams(pathname === "/" ? searchParams.toString() : "");
+        if (q) params.set("q", q);
+        else params.delete("q");
+        params.delete("page");
+        params.delete("search");
+        const qs = params.toString();
+        router.push(qs ? `/?${qs}` : "/", { scroll: pathname !== "/" });
+    }
 
     return (
-        <header
-            className={`sticky top-0 z-50 w-full transition-all duration-300 ${scrolled
-                    ? "glass shadow-premium"
-                    : "bg-background/80 backdrop-blur-sm"
-                }`}
-        >
-            <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-4 lg:px-8">
-                {/* Logo */}
+        <form role="search" onSubmit={submit} className={`flex h-11 w-full overflow-hidden rounded-xl border bg-card focus-within:ring-[3px] focus-within:ring-ring/30 ${className}`}>
+            <input
+                type="search"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                maxLength={100}
+                placeholder="Search for products, categories and more…"
+                aria-label="Search products"
+                className="min-w-0 flex-1 bg-transparent px-4 text-sm outline-none [&::-webkit-search-cancel-button]:hidden"
+            />
+            <button
+                type="submit"
+                aria-label="Search"
+                className="flex w-12 shrink-0 items-center justify-center bg-foreground text-background transition-opacity hover:opacity-90"
+            >
+                <Search className="h-4 w-4" />
+            </button>
+        </form>
+    );
+}
+
+function HeaderSearch({ className }: { className?: string }) {
+    return (
+        <Suspense fallback={<div className={`h-11 w-full rounded-xl border bg-card ${className ?? ""}`} />}>
+            <HeaderSearchForm className={className} />
+        </Suspense>
+    );
+}
+
+function LabelledIcon({ icon: Icon, label, badge }: { icon: typeof User; label: string; badge?: number }) {
+    return (
+        <span className="relative flex items-center gap-2 text-sm">
+            <span className="relative">
+                <Icon className="h-5 w-5" />
+                {badge ? (
+                    <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full gradient-bg px-1 text-[10px] font-semibold text-white">
+                        {badge > 99 ? "99+" : badge}
+                    </span>
+                ) : null}
+            </span>
+            <span className="hidden whitespace-nowrap lg:inline">{label}</span>
+        </span>
+    );
+}
+
+export function Header({ categories }: { categories: HeaderCategory[] }) {
+    const { data: session } = useSession();
+    const [open, setOpen] = useState(false);
+    const hydrated = useHydrated();
+    const count = useCartStore((s) => s.getItemCount());
+    const itemCount = hydrated ? count : 0;
+
+    return (
+        <header className="z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:sticky md:top-0">
+            {/* Row 1: brand, search, account */}
+            <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 lg:gap-8 lg:px-8">
                 <Logo />
 
-                {/* Desktop Nav */}
-                <nav className="hidden items-center gap-1 md:flex">
-                    {navLinks.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors hover:bg-muted ${pathname === link.href
-                                    ? "text-primary"
-                                    : "text-muted-foreground"
-                                }`}
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
-                </nav>
+                <HeaderSearch className="hidden md:flex md:max-w-xl lg:max-w-2xl" />
 
-                {/* Actions */}
-                <div className="flex items-center gap-0.5 sm:gap-1">
-                    <Button asChild variant="ghost" size="icon" className="hidden sm:inline-flex h-9 w-9 rounded-lg">
-                        <Link href="/account/wishlist" aria-label="Wishlist">
-                            <Heart className="h-4 w-4" />
-                        </Link>
-                    </Button>
-
-                    <Button asChild variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg">
-                        <Link href="/cart" aria-label={mounted && itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}>
-                            <ShoppingBag className="h-4 w-4" />
-                            {mounted && itemCount > 0 && (
-                                <Badge className="absolute -right-1 -top-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full p-0 text-[9px] sm:text-[10px] gradient-bg border-0 text-white">
-                                    {itemCount > 99 ? '99+' : itemCount}
-                                </Badge>
-                            )}
-                        </Link>
-                    </Button>
-
-                    <ThemeToggle />
-
+                <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:gap-5">
                     {session ? (
                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-9 w-9 rounded-lg hidden sm:flex"
-                                >
-                                    <User className="h-4 w-4" />
-                                </Button>
+                            <DropdownMenuTrigger className="hidden rounded-lg p-2 hover:bg-muted md:block" aria-label="Account menu">
+                                <LabelledIcon icon={User} label="Account" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
-                                <div className="px-2 py-1.5">
+                                <DropdownMenuLabel className="font-normal">
                                     <p className="text-sm font-medium">{session.user.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {session.user.email}
-                                    </p>
-                                </div>
+                                    <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
+                                </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 {session.user.role === "ADMIN" && (
                                     <DropdownMenuItem asChild>
                                         <Link href="/admin">
                                             <LayoutDashboard className="mr-2 h-4 w-4" />
-                                            Admin Dashboard
+                                            Admin dashboard
                                         </Link>
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem asChild>
                                     <Link href="/account/orders">
                                         <Package className="mr-2 h-4 w-4" />
-                                        My Orders
+                                        My orders
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
@@ -144,114 +159,146 @@ export function Header() {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() => signOut()}
-                                    className="text-destructive"
-                                >
+                                <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
                                     <LogOut className="mr-2 h-4 w-4" />
-                                    Sign Out
+                                    Sign out
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     ) : (
-                        <Link href="/login" className="hidden sm:block">
-                            <Button
-                                size="sm"
-                                className="ml-2 rounded-lg gradient-bg border-0 text-white hover:opacity-90"
-                            >
-                                Sign In
-                            </Button>
+                        <Link href="/login" className="hidden rounded-lg p-2 hover:bg-muted md:block">
+                            <LabelledIcon icon={User} label="Sign in" />
                         </Link>
                     )}
 
-                    {/* Mobile menu */}
+                    <Link href="/account/wishlist" className="rounded-lg p-2 hover:bg-muted" aria-label="Wishlist">
+                        <LabelledIcon icon={Heart} label="Wishlist" />
+                    </Link>
+
+                    <Link
+                        href="/cart"
+                        className="rounded-lg p-2 hover:bg-muted"
+                        aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
+                    >
+                        <LabelledIcon icon={ShoppingBag} label="Cart" badge={itemCount} />
+                    </Link>
+
+                    <ThemeToggle />
+
+                    {/* Mobile: account & extra links (main navigation is the bottom bar) */}
                     <Sheet open={open} onOpenChange={setOpen}>
-                        <SheetTrigger asChild className="md:hidden">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
-                                <Menu className="h-4 w-4" />
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-lg md:hidden" aria-label="Open menu">
+                                <Menu className="h-5 w-5" />
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="right" className="w-72 sm:w-80">
-                            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                            <div className="flex flex-col h-full">
-                                {/* Mobile menu header */}
-                                <div className="flex items-center justify-between pb-4 border-b">
-                                    <span className="text-lg font-bold gradient-text">Menu</span>
-                                </div>
-
-                                {/* Mobile navigation links */}
-                                <nav className="mt-4 flex flex-col gap-1">
-                                    {navLinks.map((link) => (
+                            <SheetTitle className="sr-only">Menu</SheetTitle>
+                            <nav className="mt-10 flex flex-col gap-1 px-2">
+                                <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Shop</p>
+                                {categories.map((c) => {
+                                    const Icon = categoryIcon(c.slug);
+                                    return (
                                         <Link
-                                            key={link.href}
-                                            href={link.href}
+                                            key={c.id}
+                                            href={`/?category=${c.slug}`}
                                             onClick={() => setOpen(false)}
-                                            className={`rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted ${pathname === link.href
-                                                    ? "bg-muted text-primary"
-                                                    : "text-muted-foreground"
-                                                }`}
+                                            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted"
                                         >
-                                            {link.label}
+                                            <Icon className="h-4 w-4 text-muted-foreground" />
+                                            {c.name}
                                         </Link>
-                                    ))}
-                                </nav>
-
-                                {/* Mobile-only links */}
-                                <div className="mt-4 pt-4 border-t">
-                                    <p className="px-4 text-xs font-medium text-muted-foreground uppercase mb-2">Account</p>
-                                    <Link
-                                        href="/account/wishlist"
-                                        onClick={() => setOpen(false)}
-                                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground"
-                                    >
-                                        <Heart className="h-4 w-4" />
-                                        Wishlist
-                                    </Link>
-                                    <Link
-                                        href="/cart"
-                                        onClick={() => setOpen(false)}
-                                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground"
-                                    >
-                                        <ShoppingBag className="h-4 w-4" />
-                                        Cart ({itemCount})
-                                    </Link>
-                                    {session ? (
-                                        <>
-                                            <Link
-                                                href="/account/orders"
-                                                onClick={() => setOpen(false)}
-                                                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted text-muted-foreground"
-                                            >
-                                                <Package className="h-4 w-4" />
-                                                My Orders
+                                    );
+                                })}
+                                <p className="mt-4 px-3 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Account</p>
+                                {session ? (
+                                    <>
+                                        {session.user.role === "ADMIN" && (
+                                            <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted">
+                                                <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                                                Admin dashboard
                                             </Link>
-                                            <button
-                                                onClick={() => {
-                                                    signOut();
-                                                    setOpen(false);
-                                                }}
-                                                className="w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted text-destructive"
-                                            >
-                                                <LogOut className="h-4 w-4" />
-                                                Sign Out
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <Link
-                                            href="/login"
-                                            onClick={() => setOpen(false)}
-                                            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-muted text-primary"
-                                        >
-                                            <User className="h-4 w-4" />
-                                            Sign In
+                                        )}
+                                        <Link href="/account/orders" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted">
+                                            <Package className="h-4 w-4 text-muted-foreground" />
+                                            My orders
                                         </Link>
-                                    )}
-                                </div>
-                            </div>
+                                        <Link href="/account/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm hover:bg-muted">
+                                            <Settings className="h-4 w-4 text-muted-foreground" />
+                                            Settings
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                setOpen(false);
+                                                signOut();
+                                            }}
+                                            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-destructive hover:bg-muted"
+                                        >
+                                            <LogOut className="h-4 w-4" />
+                                            Sign out
+                                        </button>
+                                    </>
+                                ) : (
+                                    <Link href="/login" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-primary hover:bg-muted">
+                                        <User className="h-4 w-4" />
+                                        Sign in
+                                    </Link>
+                                )}
+                            </nav>
                         </SheetContent>
                     </Sheet>
                 </div>
             </div>
+
+            {/* Mobile search */}
+            <div className="px-4 pb-3 md:hidden">
+                <HeaderSearch />
+            </div>
+
+            {/* Row 2: categories (desktop) */}
+            <nav aria-label="Categories" className="hidden border-t md:block">
+                <div className="mx-auto flex h-11 max-w-7xl items-center gap-1 overflow-x-auto px-4 text-sm no-scrollbar lg:px-8">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger className="mr-3 flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 font-medium hover:bg-muted">
+                            <Menu className="h-4 w-4" />
+                            All categories
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-60">
+                            {categories.map((c) => {
+                                const Icon = categoryIcon(c.slug);
+                                return (
+                                    <DropdownMenuItem key={c.id} asChild>
+                                        <Link href={`/?category=${c.slug}`}>
+                                            <Icon className="mr-2 h-4 w-4" />
+                                            {c.name}
+                                        </Link>
+                                    </DropdownMenuItem>
+                                );
+                            })}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                                <Link href="/categories">Browse all categories</Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {categories.map((c) => (
+                        <Link
+                            key={c.id}
+                            href={`/?category=${c.slug}`}
+                            className="shrink-0 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                            {c.name}
+                        </Link>
+                    ))}
+                    <Link
+                        href="/?sale=1&sort=discount"
+                        className="ml-auto shrink-0 rounded-lg px-3 py-1.5 font-medium text-primary hover:bg-primary/10"
+                    >
+                        Deals
+                    </Link>
+                </div>
+            </nav>
         </header>
     );
 }

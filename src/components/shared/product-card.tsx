@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingBag, Eye, Sparkles, Star } from "lucide-react";
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Heart, ShoppingBag, Star } from "lucide-react";
+import { toast } from "sonner";
 import { useCartStore } from "@/stores/cart-store";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { formatPrice } from "@/lib/formatters";
-import { toast } from "sonner";
-import { Confetti, HeartAnimation } from "@/components/shared/effects";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
     id: string;
@@ -26,6 +22,8 @@ interface ProductCardProps {
     isNew?: boolean;
     ratingAvg?: number;
     ratingCount?: number;
+    /** Above-the-fold cards load their image eagerly */
+    priority?: boolean;
 }
 
 export function ProductCard({
@@ -41,432 +39,129 @@ export function ProductCard({
     isNew,
     ratingAvg = 0,
     ratingCount = 0,
+    priority = false,
 }: ProductCardProps) {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [isHovered, setIsHovered] = useState(false);
-    const [showConfetti, setShowConfetti] = useState(false);
-    const [showHeartAnimation, setShowHeartAnimation] = useState(false);
     const { isInWishlist, toggleItem, isLoading } = useWishlist();
     const addItem = useCartStore((s) => s.addItem);
-    
-    const discount = comparePrice
-        ? Math.round(((comparePrice - price) / comparePrice) * 100)
-        : 0;
 
-    const displayImages = images.length > 0 ? images : ["/placeholder.svg"];
-    const hasMultipleImages = displayImages.length > 1;
+    const discount = comparePrice && comparePrice > price ? Math.round(((comparePrice - price) / comparePrice) * 100) : 0;
+    const images0 = images[0] || "/placeholder.svg";
+    const images1 = images[1];
     const inWishlist = isInWishlist(id);
+    const soldOut = stock === 0;
 
-    // 3D tilt effect
-    const cardRef = useRef<HTMLDivElement>(null);
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-
-    const mouseX = useSpring(x, { stiffness: 300, damping: 30 });
-    const mouseY = useSpring(y, { stiffness: 300, damping: 30 });
-
-    const rotateX = useTransform(mouseY, [-0.5, 0.5], ["8deg", "-8deg"]);
-    const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-8deg", "8deg"]);
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!cardRef.current) return;
-        const rect = cardRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        x.set((e.clientX - centerX) / rect.width);
-        y.set((e.clientY - centerY) / rect.height);
-    };
-
-    const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
-        setIsHovered(false);
-        setCurrentImageIndex(0);
-    };
-
-    const handleAddToCart = (e: React.MouseEvent) => {
+    function addToCart(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        addItem({
-            id: `cart-${id}`,
-            productId: id,
-            name,
-            price,
-            image: displayImages[0],
-            stock,
+        addItem({ id: `cart-${id}`, productId: id, name, price, image: images0, stock });
+        toast.success(`${name} added to cart`, {
+            action: { label: "View cart", onClick: () => (window.location.href = "/cart") },
         });
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 500);
-        toast.success(`${name} added to cart!`, {
-            icon: <ShoppingBag className="w-4 h-4" />,
-        });
-    };
+    }
 
-    const handleLike = async (e: React.MouseEvent) => {
+    async function toggleWishlist(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        
-        if (isLoading) return;
-        
-        const result = await toggleItem(id);
-        if (result.success && result.added) {
-            setShowHeartAnimation(true);
-            setTimeout(() => setShowHeartAnimation(false), 1000);
-        }
-    };
+        if (!isLoading) await toggleItem(id);
+    }
 
     return (
-        <>
-            <Confetti trigger={showConfetti} particleCount={20} />
-            <AnimatePresence>
-                {showHeartAnimation && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.5 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none"
-                    >
-                        <Heart className="w-24 h-24 text-red-500 fill-red-500" />
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="h-full"
-                style={{ perspective: 1000 }}
-            >
-                <Link href={`/products/${slug}`} className="group block h-full">
-                    <motion.div
-                        ref={cardRef}
-                        className="overflow-hidden rounded-2xl border bg-card shadow-premium h-full flex flex-col relative"
-                        style={{
-                            rotateX: isHovered ? rotateX : 0,
-                            rotateY: isHovered ? rotateY : 0,
-                            transformStyle: "preserve-3d",
-                        }}
-                        onMouseMove={handleMouseMove}
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={handleMouseLeave}
-                        whileHover={{
-                            boxShadow: "0 25px 50px -12px rgba(99, 102, 241, 0.25)",
-                        }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    >
-                        {/* Image Container */}
-                        <div className="relative aspect-square overflow-hidden bg-muted flex-shrink-0">
-                            <motion.div
-                                className="absolute inset-0"
-                                animate={{
-                                    scale: isHovered ? 1.05 : 1,
-                                }}
-                                transition={{ duration: 0.4 }}
-                            >
-                                <Image
-                                    src={displayImages[currentImageIndex]}
-                                    alt={`${name} - Image ${currentImageIndex + 1}`}
-                                    fill
-                                    className="object-cover"
-                                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                                />
-                            </motion.div>
-
-                            {/* Gradient overlay on hover */}
-                            <motion.div
-                                className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: isHovered ? 1 : 0 }}
-                                transition={{ duration: 0.3 }}
-                            />
-
-                            {/* Image Indicators */}
-                            {hasMultipleImages && (
-                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                                    {displayImages.slice(0, 5).map((_, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setCurrentImageIndex(idx);
-                                            }}
-                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                                                idx === currentImageIndex
-                                                    ? "bg-white w-4"
-                                                    : "bg-white/50 hover:bg-white/70"
-                                            }`}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Badges */}
-                            <div className="absolute left-3 top-3 flex flex-col gap-1.5 z-10">
-                                {isNew && (
-                                    <Badge className="bg-green-500 text-white border-0 text-[10px] px-2 py-0.5 shadow-lg">
-                                        <Sparkles className="w-3 h-3 mr-1" />
-                                        NEW
-                                    </Badge>
-                                )}
-                                {isFeatured && (
-                                    <Badge className="gradient-bg border-0 text-white text-[10px] px-2 py-0.5 shadow-lg">
-                                        Featured
-                                    </Badge>
-                                )}
-                                {discount > 0 && (
-                                    <Badge variant="destructive" className="text-[10px] px-2 py-0.5 shadow-lg">
-                                        -{discount}%
-                                    </Badge>
-                                )}
-                                {stock === 0 && (
-                                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5 shadow-lg">
-                                        Out of Stock
-                                    </Badge>
-                                )}
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="absolute right-3 top-3 flex flex-col gap-2 z-10">
-                                <motion.button
-                                    onClick={handleLike}
-                                    aria-label={inWishlist ? "Remove from wishlist" : "Save to wishlist"}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-colors ${
-                                        inWishlist 
-                                            ? "bg-red-500 text-white" 
-                                            : "bg-white/90 text-gray-600 hover:bg-white hover:text-red-500"
-                                    }`}
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    animate={inWishlist ? {
-                                        scale: [1, 1.2, 1],
-                                    } : {}}
-                                >
-                                    <Heart className={`w-4 h-4 ${inWishlist ? "fill-current" : ""}`} />
-                                </motion.button>
-                                
-                                <motion.div
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : 20 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-lg"
-                                        aria-label="View product"
-                                        tabIndex={-1}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                        }}
-                                    >
-                                        <Eye className="w-4 h-4" />
-                                    </Button>
-                                </motion.div>
-                            </div>
-
-                            {/* Add to cart button */}
-                            {stock > 0 && (
-                                <motion.div
-                                    className="absolute bottom-3 left-3 right-3 z-10"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ 
-                                        opacity: isHovered ? 1 : 0, 
-                                        y: isHovered ? 0 : 20 
-                                    }}
-                                    transition={{ duration: 0.3 }}
-                                >
-                                    <Button
-                                        onClick={handleAddToCart}
-                                        className="w-full rounded-xl gradient-bg border-0 text-white text-sm shadow-lg hover:shadow-xl transition-shadow"
-                                        size="sm"
-                                    >
-                                        <motion.span
-                                            className="flex items-center gap-2"
-                                            whileHover={{ x: 3 }}
-                                        >
-                                            <ShoppingBag className="w-4 h-4" />
-                                            Add to Cart
-                                        </motion.span>
-                                    </Button>
-                                </motion.div>
-                            )}
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="p-4 flex flex-col flex-grow">
-                            {category && (
-                                <motion.p 
-                                    className="text-[11px] font-medium text-primary uppercase tracking-wider mb-1"
-                                    initial={{ opacity: 0.7 }}
-                                    whileHover={{ opacity: 1 }}
-                                >
-                                    {category}
-                                </motion.p>
-                            )}
-                            <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors duration-300 leading-tight mb-2">
-                                {name}
-                            </h3>
-                            {ratingCount > 0 && (
-                                <div className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
-                                    <span className="font-medium text-foreground">{ratingAvg.toFixed(1)}</span>
-                                    <span>({ratingCount})</span>
-                                </div>
-                            )}
-                            <div className="mt-auto flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-base text-primary">
-                                    {formatPrice(price)}
-                                </span>
-                                {comparePrice && (
-                                    <span className="text-xs text-muted-foreground line-through">
-                                        {formatPrice(comparePrice)}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Mobile Add to Cart */}
-                            {stock > 0 && (
-                                <motion.div
-                                    className="mt-3 [@media(hover:hover)]:hidden"
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <Button
-                                        onClick={handleAddToCart}
-                                        className="w-full rounded-lg gradient-bg border-0 text-white text-xs h-9"
-                                        size="sm"
-                                    >
-                                        <ShoppingBag className="w-3.5 h-3.5 mr-1.5" />
-                                        Add to Cart
-                                    </Button>
-                                </motion.div>
-                            )}
-                        </div>
-                    </motion.div>
-                </Link>
-            </motion.div>
-        </>
-    );
-}
-
-// 3D Card with advanced hover effects
-export function ProductCard3D({
-    id,
-    name,
-    slug,
-    price,
-    comparePrice,
-    images,
-    stock,
-    category,
-    isFeatured,
-}: ProductCardProps) {
-    const cardRef = useRef<HTMLDivElement>(null);
-    const [isHovered, setIsHovered] = useState(false);
-
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-
-    const mouseX = useSpring(x, { stiffness: 500, damping: 100 });
-    const mouseY = useSpring(y, { stiffness: 500, damping: 100 });
-
-    const rotateX = useTransform(mouseY, [-0.5, 0.5], ["15deg", "-15deg"]);
-    const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-15deg", "15deg"]);
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!cardRef.current) return;
-        const rect = cardRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        x.set((e.clientX - centerX) / rect.width);
-        y.set((e.clientY - centerY) / rect.height);
-    };
-
-    const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
-        setIsHovered(false);
-    };
-
-    const discount = comparePrice
-        ? Math.round(((comparePrice - price) / comparePrice) * 100)
-        : 0;
-
-    return (
-        <motion.div
-            ref={cardRef}
-            className="relative w-full h-full cursor-pointer"
-            style={{
-                perspective: 1000,
-                transformStyle: "preserve-3d",
-            }}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={handleMouseLeave}
+        <Link
+            href={`/products/${slug}`}
+            className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-shadow duration-300 hover:shadow-premium focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
         >
-            <Link href={`/products/${slug}`}>
-                <motion.div
-                    className="relative w-full h-full rounded-2xl overflow-hidden bg-card border shadow-2xl"
-                    style={{
-                        rotateX: rotateX,
-                        rotateY: rotateY,
-                        transformStyle: "preserve-3d",
-                    }}
-                    whileHover={{
-                        boxShadow: "0 30px 60px -15px rgba(99, 102, 241, 0.4)",
-                    }}
-                >
-                    {/* Shine effect */}
-                    <motion.div
-                        className="absolute inset-0 z-20 pointer-events-none"
-                        style={{
-                            background: useTransform(
-                                [mouseX, mouseY],
-                                ([latestX, latestY]) =>
-                                    `radial-gradient(circle at ${(latestX as number + 0.5) * 100}% ${(latestY as number + 0.5) * 100}%, rgba(255,255,255,0.15) 0%, transparent 50%)`
-                            ),
-                        }}
+            <div className="relative aspect-square overflow-hidden bg-muted">
+                <Image
+                    src={images0}
+                    alt={name}
+                    fill
+                    priority={priority}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className={cn(
+                        "object-cover transition duration-500 group-hover:scale-[1.03]",
+                        images1 && "group-hover:opacity-0",
+                        soldOut && "opacity-60"
+                    )}
+                />
+                {/* Second photo on hover, when there is one */}
+                {images1 && (
+                    <Image
+                        src={images1}
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-cover opacity-0 transition duration-500 group-hover:opacity-100"
                     />
+                )}
 
-                    {/* Content */}
-                    <div className="relative aspect-square">
-                        <Image
-                            src={images[0] || "/placeholder.svg"}
-                            alt={name}
-                            fill
-                            className="object-cover"
-                        />
-                        
-                        {/* Floating badge */}
-                        <motion.div
-                            className="absolute top-4 left-4 z-10"
-                            style={{
-                                translateZ: 50,
-                            }}
-                        >
+                <div className="absolute left-2.5 top-2.5 flex flex-col items-start gap-1">
+                    {discount > 0 && (
+                        <span className="rounded-md bg-destructive px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                            −{discount}%
+                        </span>
+                    )}
+                    {isNew && (
+                        <span className="rounded-md bg-foreground px-1.5 py-0.5 text-[11px] font-semibold text-background">New</span>
+                    )}
+                    {isFeatured && !discount && (
+                        <span className="rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                            Featured
+                        </span>
+                    )}
+                    {soldOut && (
+                        <span className="rounded-md bg-background/90 px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
+                            Sold out
+                        </span>
+                    )}
+                </div>
+
+                <button
+                    type="button"
+                    onClick={toggleWishlist}
+                    aria-label={inWishlist ? "Remove from wishlist" : "Save to wishlist"}
+                    aria-pressed={inWishlist}
+                    className={cn(
+                        "absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-colors",
+                        inWishlist ? "bg-red-500 text-white" : "bg-background/90 text-foreground hover:text-red-500"
+                    )}
+                >
+                    <Heart className={cn("h-4 w-4", inWishlist && "fill-current")} />
+                </button>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-1 p-3 sm:p-4">
+                {category && (
+                    <p className="truncate text-[11px] uppercase tracking-wider text-muted-foreground">{category}</p>
+                )}
+                <h3 className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-primary">{name}</h3>
+
+                <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                    <div className="min-w-0">
+                        <p className="flex flex-wrap items-baseline gap-x-1.5">
+                            <span className="font-semibold">{formatPrice(price)}</span>
                             {discount > 0 && (
-                                <Badge className="bg-red-500 text-white border-0 shadow-lg">
-                                    -{discount}%
-                                </Badge>
+                                <span className="text-xs text-muted-foreground line-through">{formatPrice(comparePrice!)}</span>
                             )}
-                        </motion.div>
-                    </div>
-
-                    {/* Info with depth */}
-                    <motion.div 
-                        className="p-4"
-                        style={{
-                            translateZ: 30,
-                        }}
-                    >
-                        <h3 className="font-bold text-lg">{name}</h3>
-                        <p className="text-2xl font-bold text-primary mt-2">
-                            {formatPrice(price)}
                         </p>
-                    </motion.div>
-                </motion.div>
-            </Link>
-        </motion.div>
+                        {ratingCount > 0 && (
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                <span className="text-foreground">{ratingAvg.toFixed(1)}</span>
+                                <span>({ratingCount})</span>
+                            </p>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={addToCart}
+                        disabled={soldOut}
+                        aria-label={soldOut ? `${name} is sold out` : `Add ${name} to cart`}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:pointer-events-none disabled:opacity-40"
+                    >
+                        <ShoppingBag className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+        </Link>
     );
 }
