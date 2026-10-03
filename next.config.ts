@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -19,6 +20,8 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Pin the project root so a parent folder's lockfile (e.g. a git worktree) isn't picked up
+  turbopack: { root: path.resolve(__dirname) },
   /* config options here */
   images: {
     remotePatterns: [

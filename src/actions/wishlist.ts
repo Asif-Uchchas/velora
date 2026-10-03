@@ -72,3 +72,15 @@ export async function toggleWishlist(productId: string) {
         return { added: true };
     }
 }
+
+/** Just the product ids, for heart icons on product cards (one small query per visit). */
+export async function getWishlistProductIds(): Promise<string[]> {
+    const session = await auth();
+    if (!session?.user?.id) return [];
+
+    const items = await prisma.wishlistItem.findMany({
+        where: { wishlist: { userId: session.user.id } },
+        select: { productId: true },
+    });
+    return items.map((i) => i.productId);
+}

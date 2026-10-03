@@ -1,70 +1,101 @@
 import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
+import { getStoreSettings, orderEmailFor } from "@/lib/settings";
+import { formatPrice } from "@/lib/formatters";
+import { formatBdPhone, toWhatsAppNumber } from "@/lib/phone";
 
-const footerLinks = {
-    Shop: [
-        { href: "/products", label: "All Products" },
-        { href: "/categories", label: "Categories" },
-        { href: "/products?featured=true", label: "Featured" },
-        { href: "/products?sort=newest", label: "New Arrivals" },
-    ],
-    Account: [
-        { href: "/account/orders", label: "My Orders" },
-        { href: "/account/wishlist", label: "Wishlist" },
-        { href: "/account/settings", label: "Settings" },
-        { href: "/cart", label: "Cart" },
-    ],
-    Company: [
-        { href: "#", label: "About Us" },
-        { href: "#", label: "Contact" },
-        { href: "#", label: "Privacy Policy" },
-        { href: "#", label: "Terms of Service" },
-    ],
-};
+const shopLinks = [
+    { href: "/", label: "All products" },
+    { href: "/categories", label: "Categories" },
+    { href: "/?featured=1", label: "Featured" },
+    { href: "/?sort=newest", label: "New arrivals" },
+    { href: "/?sale=1&sort=discount", label: "Deals" },
+];
 
-export function Footer() {
+const accountLinks = [
+    { href: "/account/orders", label: "My orders" },
+    { href: "/account/wishlist", label: "Wishlist" },
+    { href: "/account/settings", label: "Settings" },
+    { href: "/cart", label: "Cart" },
+];
+
+export async function Footer() {
+    const settings = await getStoreSettings().catch(() => null);
+    const email = settings ? orderEmailFor(settings) : null;
+
     return (
         <footer className="border-t bg-muted/30">
-            <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-                    {/* Brand */}
-                    <div className="col-span-2 md:col-span-1">
+            <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+                <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+                    <div className="space-y-4">
                         <Logo />
-                        <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                            Premium e-commerce platform crafted for the modern shopper.
-                            Beautiful products, seamless experience.
+                        <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+                            Everyday essentials, chosen with care. Cash on delivery to all 64 districts of Bangladesh.
                         </p>
+                        <p className="font-display text-lg italic text-foreground/80">Shop smart. Live better.</p>
                     </div>
 
-                    {/* Links */}
-                    {Object.entries(footerLinks).map(([title, links]) => (
-                        <div key={title}>
-                            <h3 className="text-sm font-semibold">{title}</h3>
-                            <ul className="mt-4 space-y-3">
-                                {links.map((link) => (
-                                    <li key={link.label}>
-                                        <Link
-                                            href={link.href}
-                                            className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+                    <div>
+                        <h3 className="text-sm font-semibold">Shop</h3>
+                        <ul className="mt-4 space-y-2.5">
+                            {shopLinks.map((link) => (
+                                <li key={link.label}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-semibold">Account</h3>
+                        <ul className="mt-4 space-y-2.5">
+                            {accountLinks.map((link) => (
+                                <li key={link.label}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-semibold">Help</h3>
+                        <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+                            {settings && (
+                                <li>
+                                    <a
+                                        href={`https://wa.me/${toWhatsAppNumber(settings.whatsappNumber)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary"
+                                    >
+                                        WhatsApp {formatBdPhone(settings.whatsappNumber)}
+                                    </a>
+                                </li>
+                            )}
+                            {email && (
+                                <li>
+                                    <a href={`mailto:${email}`} className="break-all hover:text-primary">
+                                        {email}
+                                    </a>
+                                </li>
+                            )}
+                            {settings && (
+                                <li>
+                                    Delivery {formatPrice(settings.deliveryFeeInside)} in Dhaka,{" "}
+                                    {formatPrice(settings.deliveryFeeOutside)} outside
+                                </li>
+                            )}
+                        </ul>
+                    </div>
                 </div>
 
-                <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row">
-                    <p className="text-xs text-muted-foreground">
-                        &copy; {new Date().getFullYear()} Velora. All rights reserved.
-                    </p>
-                    <div className="flex gap-4">
-                        <span className="text-xs text-muted-foreground">
-                            Cash on delivery · Order on WhatsApp
-                        </span>
-                    </div>
+                <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t pt-6 text-xs text-muted-foreground sm:flex-row">
+                    <p>&copy; {new Date().getFullYear()} Velora. All rights reserved.</p>
+                    <p>Cash on delivery · Order on WhatsApp</p>
                 </div>
             </div>
         </footer>

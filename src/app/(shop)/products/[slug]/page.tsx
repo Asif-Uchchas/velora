@@ -1,29 +1,16 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { getProductBySlug, getProducts } from "@/actions/product";
 import { getProductReviews } from "@/actions/review";
 import { ProductCard } from "@/components/shared/product-card";
-import { ProductImageGallery } from "./product-image-gallery";
-import { formatPrice } from "@/lib/formatters";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, ArrowRight } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  ProductQuickActions,
-  TrustBadgesGrid,
-  ProductHighlights,
-  ProductStats,
-  AnimatedPrice,
-  RatingDisplay,
-  StockStatus,
-  GuaranteeSection,
-} from "@/components/shared/product-detail-components";
-import { ProductDetailBackground } from "@/components/shared/product-detail-background";
+import { RatingDisplay } from "@/components/shared/product-detail-components";
 import { ReviewSection } from "@/components/shared/review-section";
 import { WhatsAppChatButton } from "@/components/shared/whatsapp-chat";
 import { getStoreSettings } from "@/lib/settings";
+import { ProductImageGallery } from "./product-image-gallery";
+import { PurchasePanel } from "./purchase-panel";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -69,119 +56,54 @@ export default async function ProductDetailPage({ params }: Props) {
   });
   const related = relatedProducts.filter((p) => p.id !== product.id).slice(0, 4);
 
-  // Mock highlights - in real app, these would come from database
-  const highlights = [
-    "Premium quality materials",
-    "Ergonomic design for comfort",
-    "Sustainable manufacturing",
-    "2-year warranty included",
-  ];
-
   return (
-    <ProductDetailBackground accentColor="rgba(99, 102, 241, 0.08)">
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-6 sm:py-8 lg:px-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Home
+    <div>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8 lg:px-8">
+        <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">Home</Link>
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+          <Link href={`/?category=${product.category.slug}`} className="hover:text-foreground">
+            {product.category.name}
           </Link>
-          <ArrowRight className="w-4 h-4" />
-          <Link href="/" className="hover:text-foreground transition-colors">
-            Products
-          </Link>
-          <ArrowRight className="w-4 h-4" />
-          <span className="text-foreground truncate max-w-[200px]">{product.name}</span>
-        </div>
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="max-w-[14rem] truncate text-foreground" aria-current="page">{product.name}</span>
+        </nav>
 
-        <div className="grid gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-16">
-          {/* Images with Zoom */}
-          <ProductImageGallery
-            images={product.images}
-            productName={product.name}
-            discount={discount}
-          />
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
+          <ProductImageGallery images={product.images} productName={product.name} discount={discount} />
 
-          {/* Product Info */}
-          <div className="flex flex-col">
-            {/* Category & Badges */}
-            <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-col gap-5">
+            <div className="space-y-3">
               <Link
-                href={`/categories/${product.category.slug}`}
-                className="text-sm text-primary font-medium hover:underline"
+                href={`/?category=${product.category.slug}`}
+                className="text-xs font-medium uppercase tracking-[0.18em] text-primary hover:underline"
               >
                 {product.category.name}
               </Link>
-              {product.isFeatured && (
-                <Badge className="bg-primary text-white border-0">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
+              <h1 className="font-display text-3xl font-medium leading-tight tracking-tight text-balance sm:text-4xl">
+                {product.name}
+              </h1>
+              {reviews.length > 0 && <RatingDisplay rating={avgRating} reviewCount={reviews.length} />}
             </div>
 
-            {/* Product Name */}
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 leading-tight">
-              {product.name}
-            </h1>
-
-            {/* Rating */}
-            {reviews.length > 0 && (
-              <div className="mb-4">
-                <RatingDisplay rating={avgRating} reviewCount={reviews.length} />
-              </div>
-            )}
-
-            {/* Price */}
-            <div className="mb-4">
-              <AnimatedPrice price={product.price} comparePrice={product.comparePrice} />
-            </div>
-
-            {/* Stock Status */}
-            <div className="mb-6">
-              <StockStatus stock={product.stock} />
-            </div>
-
-            <Separator className="my-4 sm:my-6" />
-
-            {/* Description */}
-            <div className="prose prose-sm dark:prose-invert max-w-none mb-6">
-              <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-                {product.description}
-              </p>
-            </div>
-
-            {/* Product Highlights */}
-            <div className="mb-6">
-              <ProductHighlights highlights={highlights} />
-            </div>
-
-            <Separator className="my-4 sm:my-6" />
-
-            {/* Quick Actions */}
-            <ProductQuickActions
+            <PurchasePanel
               product={{
                 id: product.id,
                 name: product.name,
                 price: product.price,
+                comparePrice: product.comparePrice,
                 stock: product.stock,
                 images: product.images,
               }}
+              fees={{ inside: settings.deliveryFeeInside, outside: settings.deliveryFeeOutside }}
             />
 
-            {/* Product Stats */}
-            <div className="mt-6">
-              <ProductStats />
-            </div>
-
-            {/* Trust Badges */}
-            <div className="mt-6">
-              <TrustBadgesGrid />
-            </div>
-
-            {/* Guarantee Section */}
-            <div className="mt-6">
-              <GuaranteeSection />
-            </div>
+            <section aria-labelledby="about-heading" className="border-t pt-5">
+              <h2 id="about-heading" className="mb-2 text-sm font-semibold">About this product</h2>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {product.description}
+              </p>
+            </section>
           </div>
         </div>
 
@@ -198,15 +120,16 @@ export default async function ProductDetailPage({ params }: Props) {
           <section className="mt-12 sm:mt-16">
             <div className="flex items-center justify-between mb-6 sm:mb-8">
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold">You May Also Like</h2>
+                <h2 className="font-display text-2xl font-medium tracking-tight sm:text-3xl">You may also like</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Similar products in {product.category.name}
                 </p>
               </div>
-              <Link href={`/categories/${product.category.slug}`} className="hidden sm:block">
-                <Button variant="ghost" className="text-primary">
-                  View All <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
+              <Link
+                href={`/?category=${product.category.slug}`}
+                className="hidden items-center gap-1 text-sm font-medium text-primary hover:underline sm:inline-flex"
+              >
+                View all <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
@@ -221,6 +144,8 @@ export default async function ProductDetailPage({ params }: Props) {
                   images={product.images}
                   stock={product.stock}
                   category={product.category.name}
+                  ratingAvg={product.ratingAvg}
+                  ratingCount={product.ratingCount}
                 />
               ))}
             </div>
@@ -237,6 +162,6 @@ export default async function ProductDetailPage({ params }: Props) {
         phoneNumber={settings.whatsappNumber}
         businessName="Velora Store"
       />
-    </ProductDetailBackground>
+    </div>
   );
 }

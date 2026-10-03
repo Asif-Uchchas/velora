@@ -50,7 +50,7 @@ export function WhatsAppChatButton({
       {/* Floating Button */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         initial={{ scale: 0, opacity: 0 }}
@@ -78,7 +78,7 @@ export function WhatsAppChatButton({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] bg-white dark:bg-card rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed bottom-[calc(9.5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-24 md:right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] bg-white dark:bg-card rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Header */}
               <div className="bg-[#25D366] text-white p-4 flex items-center gap-3">
